@@ -53,7 +53,7 @@ public:
         std::copy(other.begin(), other.end(), simple_vector_.Get());
     }
 
-    // конструктор перемещения
+    // конструктор перемещения-- свой, правильный конструктор должен был украсть данные из other и присвоить this.
     SimpleVector(SimpleVector&& other) noexcept
 	    : simple_vector_(other.capacity_)
     {
@@ -61,43 +61,52 @@ public:
     }
 
     // Конструктор с вызовом функции Reserve
-    explicit SimpleVector(ReserveFunc obj)
+    explicit SimpleVector(const ReserveFunc obj)
     {
         Reserve(obj.GetCapacity());
     }
 
     SimpleVector& operator=(const SimpleVector& rhs) {
-        if (&simple_vector_ != &rhs.simple_vector_) {
-            ArrayPtr<Type> temp(rhs.GetCapacity());
-            std::copy(rhs.begin(), rhs.end(), temp.Get());
-            simple_vector_.swap(temp);
-            size_ = rhs.GetSize();
-            capacity_ = rhs.GetCapacity();
+        if (&simple_vector_ != &rhs.simple_vector_)
+        {
+            auto helper(rhs);
+            swap(helper);
         }
+
         return *this;
     }
 
     // Возвращает ссылку на элемент с индексом index
     Type& operator[](size_t index) noexcept {
-        return simple_vector_[index];
+        assert(index <= size_);
+    	return simple_vector_[index];
     }
-
+    
     // Возвращает константную ссылку на элемент с индексом index
     const Type& operator[](size_t index) const noexcept {
+        assert(index <= size_);
         return simple_vector_[index];
     }
 
     // Возвращает константную ссылку на элемент с индексом index
     // Выбрасывает исключение std::out_of_range, если index >= size
     Type& At(size_t index) {
-        if (index >= size_) throw std::out_of_range("Out of range");
+        if (index >= size_)
+        {
+            throw std::out_of_range("Out of range");
+        }
+
         return simple_vector_[index];
     }
 
     // Возвращает константную ссылку на элемент с индексом index
     // Выбрасывает исключение std::out_of_range, если index >= size
     const Type& At(size_t index) const {
-        if (index >= size_) throw std::out_of_range("Out of range");
+        if (index >= size_)
+        {
+            throw std::out_of_range("Out of range");
+        }
+
         return simple_vector_[index];
     }
 
@@ -157,15 +166,6 @@ public:
         size_ = 0;
     }
 
-    // на замену std::fill для поддержки семантики перемещения метода Resize
-    void Fill(Iterator first, Iterator last) {
-        assert(first < last);
-
-        for (; first != last; ++first) {
-            *first = std::move(Type());
-        }
-    }
-
     // Изменяет размер массива.
     // При увеличении размера новые элементы получают значение по умолчанию для типа Type
     void Resize(size_t new_size) {
@@ -190,7 +190,8 @@ public:
     // Добавляет элемент в конец вектора
     // При нехватке места увеличивает вдвое вместимость вектора
     void PushBack(const Type& item) {
-        if (size_ + 1 > capacity_) {
+        if (size_ + 1 > capacity_)
+        {
             size_t new_capacity = std::max(size_ + 1, capacity_ * 2);
             ArrayPtr<Type> temp(new_capacity);
             std::fill(temp.Get(), temp.Get() + new_capacity, Type());
@@ -204,7 +205,8 @@ public:
 
     // метод PushBack перемещением
     void PushBack(Type&& item) {
-        if (size_ + 1 > capacity_) {
+        if (size_ + 1 > capacity_)
+        {
             size_t new_capacity = std::max(size_ + 1, capacity_ * 2);
             ArrayPtr<Type> temp(new_capacity);
             std::move(simple_vector_.Get(), simple_vector_.Get() + size_, temp.Get());
@@ -223,17 +225,20 @@ public:
         assert(pos >= begin() && pos <= end());
 
         size_t count = pos - simple_vector_.Get();
-        if (capacity_ == 0) {
+        if (capacity_ == 0)
+        {
             ArrayPtr<Type> temp(1);
             temp[count] = value;
             simple_vector_.swap(temp);
             ++capacity_;
         }
-        else if (size_ < capacity_) {
+        else if (size_ < capacity_) 
+        {
             std::copy_backward(simple_vector_.Get() + count, simple_vector_.Get() + size_, simple_vector_.Get() + size_ + 1);
             simple_vector_[count] = value;
         }
-        else {
+        else
+        {
 	        const size_t new_capacity = std::max(size_ + 1, capacity_ * 2);
             ArrayPtr<Type> temp(capacity_);
             std::copy(simple_vector_.Get(), simple_vector_.Get() + size_, temp.Get());
@@ -252,17 +257,20 @@ public:
         assert(pos >= begin() && pos <= end());
 
         size_t count = pos - simple_vector_.Get();
-        if (capacity_ == 0) {
+        if (capacity_ == 0)
+        {
             ArrayPtr<Type> temp(1);
             temp[count] = std::move(value);
             simple_vector_.swap(temp);
             ++capacity_;
         }
-        else if (size_ < capacity_) {
+        else if (size_ < capacity_)
+        {
             std::move_backward(simple_vector_.Get() + count, simple_vector_.Get() + size_, simple_vector_.Get() + size_ + 1);
             simple_vector_[count] = std::move(value);
         }
-        else {
+        else
+        {
 	        const size_t new_capacity = std::max(size_ + 1, capacity_ * 2);
             ArrayPtr<Type> temp(capacity_);
             std::move(simple_vector_.Get(), simple_vector_.Get() + size_, temp.Get());
@@ -300,7 +308,8 @@ public:
     }
 
     void Reserve(size_t new_capacity) {
-        if (new_capacity > capacity_) {
+        if (new_capacity > capacity_)
+        {
             ArrayPtr<Type> temp(new_capacity);
             std::fill(temp.Get(), temp.Get() + new_capacity, Type());
             std::copy(simple_vector_.Get(), simple_vector_.Get() + size_, temp.Get());
@@ -313,6 +322,18 @@ private:
     ArrayPtr<Type> simple_vector_;
     size_t size_ = 0;
     size_t capacity_ = 0;
+
+
+    // на замену std::fill для поддержки семантики перемещения метода Resize
+    void Fill(Iterator first, Iterator last) {
+        assert(first < last);
+
+        for (; first != last; ++first)
+        {
+            *first = std::move(Type());
+        }
+    }
+
 };
 
 inline ReserveFunc Reserve(size_t capacity_to_reserve) {
@@ -321,8 +342,7 @@ inline ReserveFunc Reserve(size_t capacity_to_reserve) {
 
 template <typename Type>
 inline bool operator==(const SimpleVector<Type>& lhs, const SimpleVector<Type>& rhs) {
-    return std::equal(lhs.begin(), lhs.end(),
-        rhs.begin());
+    return std::equal(lhs.begin(), lhs.end(),rhs.begin());
 }
 
 template <typename Type>
@@ -333,8 +353,7 @@ inline bool operator!=(const SimpleVector<Type>& lhs, const SimpleVector<Type>& 
 
 template <typename Type>
 inline bool operator<(const SimpleVector<Type>& lhs, const SimpleVector<Type>& rhs) {
-    return std::lexicographical_compare(lhs.begin(), lhs.end(),
-        rhs.begin(), rhs.end());
+    return std::lexicographical_compare(lhs.begin(), lhs.end(),rhs.begin(), rhs.end());
 }
 
 template <typename Type>
