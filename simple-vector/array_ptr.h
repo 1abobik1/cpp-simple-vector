@@ -31,7 +31,22 @@ public:
     }
 
     // Запрещаем присваивание
-    ArrayPtr& operator=(const ArrayPtr&) = delete;
+    ArrayPtr& operator=(const ArrayPtr& rhs)
+    {
+	    if(&raw_ptr_ != rhs)
+	    {
+            auto copy_raw(rhs);
+            swap(copy_raw);
+            rhs = nullptr;
+	    }
+        return *this;
+    }
+
+    ArrayPtr(ArrayPtr&& other) noexcept :
+        raw_ptr_(other)
+	{
+        swap(other);
+    }
 
     // Прекращает владением массивом в памяти, возвращает значение адреса массива
     // После вызова метода указатель на массив должен обнулиться
@@ -64,9 +79,10 @@ public:
 
     // Обменивается значениям указателя на массив с объектом other
     void swap(ArrayPtr& other) noexcept {
-        std::swap(other.raw_ptr_, raw_ptr_);
+        std::swap(raw_ptr_, other.raw_ptr_);
     }
 
 private:
+
     Type* raw_ptr_ = nullptr;
 };
